@@ -1,0 +1,15 @@
+{
+  "eventType": "TRANSPORT_EVENT",
+  "eventCreatedDateTime": "2026-04-21T09:15:00Z",
+  "transportCall": {
+    "carrierBookingReference": "BK-7781",
+    "containerNumber": "MSKU7891011",
+    "vesselName": "Maersk Halifax"
+  },
+  "transportEvent": {
+    "eventClassifierCode": "ACT",
+    "transportEventTypeCode": "DEPA",
+    "description": "Container departed origin port, in transit"
+  },
+  "carrier": "MAERSK"
+}

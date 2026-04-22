@@ -1,0 +1,8 @@
+{
+  "event": "user.login",
+  "user": {
+    "id": 5421,
+    "email": "not-our-problem@example.com"
+  },
+  "timestamp": "2026-04-21T08:00:00Z"
+}
