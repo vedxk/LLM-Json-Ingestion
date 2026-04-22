@@ -1,4 +1,4 @@
-# Glacis Webhook Ingestion
+# LLM Webhook Ingestion
 
 AI-powered webhook ingestion service. Accepts arbitrary vendor JSON, durably ACKs in well under a second, then asynchronously classifies via LLM, normalizes into strict schemas, and persists — with idempotency, per-vendor rate limiting, and layered LLM reliability.
 
@@ -57,29 +57,7 @@ curl -sS -X POST http://localhost:8000/webhooks/fedex \
 
 ---
 
-## 2. Changes in this iteration
-
-### Bugs fixed
-
-1. **`NOTIFY` with bind parameters caused every webhook to 503.**
-   Postgres' `NOTIFY` statement doesn't support SQL parameters. `text("NOTIFY raw_events_new, :payload")` was prepared as `NOTIFY raw_events_new, $1` and rejected with `syntax error at or near "$1"`, which the ingest handler caught as `DBAPIError` → 503 "ingest DB unavailable." Rewrote as `SELECT pg_notify(:channel, :payload)` — same effect, and `pg_notify` is a function so it takes parameters. See [src/queue.py:32](src/queue.py#L32).
-
-2. **Seed script failed on an empty bash array under `set -u`.**
-   macOS ships bash 3.2, which treats `"${empty_array[@]}"` as unset under `set -u`. `./scripts/seed_webhooks.sh` threw `idem_header[@]: unbound variable` on any payload without an idempotency key. Fixed with the `${arr[@]+"${arr[@]}"}` guard at [scripts/seed_webhooks.sh:27](scripts/seed_webhooks.sh#L27).
-
-### Added
-
-- **11 integration tests** in [tests/test_integration_ingest.py](tests/test_integration_ingest.py) exercising the real HTTP endpoint against the real Postgres: idempotent retries, burst/concurrent spikes, per-vendor rate isolation, daily-cap enforcement.
-- **Integration fixture** in [tests/conftest.py](tests/conftest.py): `integration_client` with per-test DB truncation, registry reset, token-bucket reset, and engine disposal (the last one matters because pytest-asyncio creates a new event loop per test, and the SQLAlchemy async engine singleton would otherwise be bound to a dead loop).
-
-### Discovered but not yet fixed
-
-- **`Retry-After` header is dropped on 429/503.** The handler sets `response.headers["Retry-After"] = ...` before raising `HTTPException`, but FastAPI builds the exception response independently and discards that header. Vendors get the status code with no retry hint. See §6.1 for the fix.
-- **300ms `statement_timeout` cannot distinguish DB pathology from row-lock contention.** When many requests for one vendor hit at once, they queue on the `vendor_counters` row lock and time out — returning 503s that aren't really "DB sick." Discussed in §6.2 and §7.1.
-
----
-
-## 3. Architecture
+## 2. Architecture
 
 Two pieces of runtime code running in one uvicorn process, communicating only via Postgres.
 
